@@ -1,36 +1,90 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# 📅 Ứng dụng Quản Lý Thời Khóa Biểu (Schedule Manager)
 
-## Getting Started
+Ứng dụng web hiện đại giúp học sinh, sinh viên và giáo viên quản lý thời khóa biểu học tập một cách trực quan, dễ dàng và hiệu quả.
 
-First, run the development server:
+## ✨ Lý Do Thiết Kế & Triết Lý Sản Phẩm
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Trong quá trình học tập và làm việc, việc theo dõi lịch trình là vô cùng quan trọng. Tuy nhiên, các giải pháp hiện tại thường gặp phải các vấn đề:
+- **Giao diện cũ kỹ, nhàm chán**: Khó tạo cảm hứng sử dụng hàng ngày.
+- **Khó tùy biến**: Không thể thay đổi số tiết, giờ nghỉ trưa linh hoạt.
+- **Trải nghiệm in ấn kém**: Xuất file PDF thường bị lỗi font, vỡ bố cục hoặc không vừa khổ giấy A4.
+- **Thiếu chế độ Dark Mode**: Gây mỏi mắt khi sử dụng vào ban đêm.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+👉 **Giải pháp của chúng tôi:**
+Một ứng dụng tập trung vào **Trải nghiệm người dùng (UX/UI)** với giao diện Glassmorphism hiện đại, hỗ trợ **Dark Mode** hoàn hảo, và khả năng **Xuất PDF chuẩn A4** tối ưu cho việc in ấn.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## 🚀 Tính Năng Nổi Bật
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 1. 🎨 Giao Diện Hiện Đại & Thân Thiện
+- **Glassmorphism Design**: Hiệu ứng kính mờ, đổ bóng tinh tế, tạo cảm giác sang trọng và nhẹ nhàng.
+- **Adaptive Dark/Light Mode**: 
+  - ☀️ **Light Mode**: Sáng sủa, sạch sẽ, tối ưu độ tương phản cho việc đọc ngoài trời.
+  - 🌙 **Dark Mode**: Dịu mắt, bảo vệ thị lực trong môi trường thiếu sáng, với tông màu xanh đen (Slate/Midnight) chuyên nghiệp.
+- **Responsive**: Hiển thị tốt trên cả máy tính và máy tính bảng.
 
-## Learn More
+### 2. 🛠️ Quản Lý Linh Hoạt
+- **Đa Thời Khóa Biểu**: Tạo và lưu trữ nhiều bảng TKB khác nhau (Ví dụ: HK1, HK2, Lớp học thêm...).
+- **Cấu hình mạnh mẽ**:
+  - Tùy chỉnh Tên bảng, Năm học.
+  - Thay đổi tổng số tiết học trong ngày (lên đến 15 tiết).
+  - Thêm dòng ngăn cách (Nghỉ trưa/Nghỉ giữa giờ) tùy ý.
+- **Thao tác nhanh**: Thêm, sửa, xóa môn học chỉ với 1 cú click chuột. Kéo thả (dự kiến) trong tương lai.
 
-To learn more about Next.js, take a look at the following resources:
+### 3. 🖨️ Xuất PDF Chuyên Nghiệp
+- **Chuẩn khổ giấy A4 Ngang (Landscape)**: Tự động căn chỉnh để toàn bộ thời khóa biểu nằm gọn trong 1 trang giấy.
+- **Style In Ấn Cổ Điển**: Chuyển đổi giao diện web sang dạng bảng in đen trắng truyền thống, tiết kiệm mực in và dễ đọc.
+- **Fix lỗi hiển thị**: Tự động xuống dòng khi tên môn học quá dài, không bị mất chữ.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 4. 💾 Lưu Trữ & Đồng Bộ
+- Dữ liệu được lưu trực tiếp trên trình duyệt (Cookies/LocalStorage), đảm bảo riêng tư và truy cập nhanh chóng mà không cần đăng nhập.
+- Tự động ghi nhớ trạng thái Dark/Light mode của người dùng.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🛠️ Công Nghệ Sử Dụng
 
-## Deploy on Vercel
+Dự án được xây dựng trên nền tảng các công nghệ web tiên tiến nhất hiện nay:
+- **Framework**: [Next.js 15+](https://nextjs.org/) (App Router) - Hiệu năng cao, SEO tốt.
+- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) - Thiết kế giao diện nhanh chóng, linh hoạt.
+- **Animations**: [Framer Motion](https://www.framer.com/motion/) - Hiệu ứng chuyển động mượt mà.
+- **Icons**: [Lucide React](https://lucide.dev/) - Bộ icon hiện đại, nhẹ nhàng.
+- **PDF Export**: `html2pdf.js` - Xử lý xuất file PDF phía client.
+- **State Management**: React Hooks & Cookies.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 📦 Hướng Dẫn Cài Đặt & Chạy Dự Án
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Yêu cầu
+- Node.js (phiên bản 18 trở lên)
+- Trình quản lý gói: npm, yarn, pnpm hoặc bun
+
+### Các bước thực hiện
+
+1.  **Clone dự án:**
+    ```bash
+    git clone https://github.com/your-username/thoi-khoa-bieu.git
+    cd thoi-khoa-bieu
+    ```
+
+2.  **Cài đặt dependencies:**
+    ```bash
+    npm install
+    # hoặc
+    yarn install
+    ```
+
+3.  **Chạy server phát triển (Development):**
+    ```bash
+    npm run dev
+    ```
+    Mở trình duyệt và truy cập: `http://localhost:3000`
+
+4.  **Build bản production:**
+    ```bash
+    npm run build
+    npm start
+    ```
+
+## 🤝 Đóng Góp
+
+Mọi đóng góp đều được hoan nghênh! Nếu bạn tìm thấy lỗi hoặc có ý tưởng mới, hãy tạo **Issue** hoặc gửi **Pull Request**.
+
+---
+**Made with ❤️ by [Ha Tri Kien]**

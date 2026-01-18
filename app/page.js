@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { getStorage, saveStorage } from '../utils/storage';
+import { generatePDF } from '../utils/pdfGenerator';
 import ScheduleModal from '../components/ScheduleModal';
 import ConfigModal from '../components/ConfigModal';
 import ThemeToggle from '../components/ThemeToggle';
@@ -96,97 +97,9 @@ export default function Home() {
     saveStorage(newStorage);
   };
 
-  // --- XUẤT PDF BẰNG HTML THUẦN (KHÔNG DÙNG REACT REF) ---
-  const exportPDF = async () => {
-    // Import động để tránh lỗi window is undefined
-    const html2pdf = (await import('html2pdf.js')).default;
-
-    // 1. Tạo style inline cho PDF (Đảm bảo đẹp như in văn bản)
-    const style = `
-      <style>
-        body { font-family: 'Times New Roman', serif; color: #000; padding: 20px; }
-        h1 { text-align: center; margin-bottom: 5px; text-transform: uppercase; font-size: 24px; }
-        p.subtitle { text-align: center; margin-bottom: 20px; color: #555; font-style: italic; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        th, td { border: 1px solid #333; padding: 8px; text-align: center; vertical-align: middle; }
-        th { background-color: #f0f0f0; font-weight: bold; text-transform: uppercase; font-size: 12px; }
-        .period-col { width: 50px; background-color: #f8f8f8; font-weight: bold; }
-        .subject { font-weight: bold; font-size: 14px; display: block; margin-bottom: 4px; }
-        .location { font-size: 10px; background: #eee; padding: 2px 6px; border-radius: 4px; display: inline-block; }
-        .break-row td { background-color: #fff3cd; color: #856404; font-weight: bold; letter-spacing: 2px; font-size: 12px; padding: 10px; }
-      </style>
-    `;
-
-    // 2. Tạo nội dung HTML từ dữ liệu (Loop thủ công)
-    let tableHTML = `
-      <table>
-        <thead>
-          <tr>
-            <th style="width: 60px;">Tiết</th>
-            ${DAYS.map(d => `<th>${d}</th>`).join('')}
-          </tr>
-        </thead>
-        <tbody>
-    `;
-
-    const periods = Array.from({ length: config.maxPeriods }, (_, i) => i + 1);
-    
-    periods.forEach(period => {
-      // Row Tiết học
-      tableHTML += `<tr>`;
-      tableHTML += `<td class="period-col">${period}</td>`; // Cột Tiết
-
-      DAYS.forEach((_, dayIndex) => {
-        const key = `${dayIndex}-${period}`;
-        const cell = scheduleData[key];
-        if (cell) {
-          tableHTML += `
-            <td>
-              <span class="subject">${cell.subject}</span>
-              ${cell.location ? `<span class="location">${cell.location}</span>` : ''}
-            </td>
-          `;
-        } else {
-          tableHTML += `<td></td>`;
-        }
-      });
-      tableHTML += `</tr>`;
-
-      // Check Row Nghỉ
-      const breakRow = config.breaks?.find(b => b.after === period);
-      if (breakRow) {
-        tableHTML += `
-          <tr class="break-row">
-            <td colspan="8">${breakRow.label}</td>
-          </tr>
-        `;
-      }
-    });
-
-    tableHTML += `</tbody></table>`;
-
-    // 3. Ghép lại thành template hoàn chỉnh
-    const content = document.createElement('div');
-    content.innerHTML = `
-      ${style}
-      <h1>${currentTable.name}</h1>
-      <p class="subtitle">Năm học: ${currentTable.year}</p>
-      ${tableHTML}
-      <div style="text-align: right; font-size: 10px; margin-top: 20px; color: #999;">
-        Được tạo bởi ứng dụng Thời Khóa Biểu
-      </div>
-    `;
-
-    // 4. Cấu hình và xuất
-    const opt = {
-      margin: 10,
-      filename: `TKB-${currentTable.name}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2 }, // Vẫn dùng html2canvas ngầm nhưng render HTML thuần nên ko lỗi
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } // Khổ ngang cho rộng
-    };
-
-    html2pdf().set(opt).from(content).save();
+  // --- XUẤT PDF ---
+  const exportPDF = () => {
+    generatePDF(currentTable, currentTable, DAYS);
   };
 
   if (!mounted) return null;
@@ -205,9 +118,9 @@ export default function Home() {
       <div className="max-w-7xl mx-auto space-y-8">
         
         {/* HEADER AREA */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-white/20 dark:border-white/5">
+        <div className="relative z-30 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 bg-white/80 dark:bg-slate-900/40 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-white/40 dark:border-white/5">
           <div>
-            <div className="relative inline-block text-left z-20">
+            <div className="relative inline-block text-left z-50">
               <button 
                 onClick={() => setMenuOpen(!menuOpen)}
                 className="flex items-center gap-3 text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-violet-600 via-indigo-600 to-pink-500 hover:opacity-80 transition drop-shadow-sm"
@@ -220,7 +133,7 @@ export default function Home() {
                 {menuOpen && (
                   <motion.div 
                     initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-                    className="absolute left-0 mt-2 w-72 rounded-2xl bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl shadow-2xl ring-1 ring-black/5 dark:ring-white/10 overflow-hidden z-50"
+                    className="absolute left-0 mt-2 w-72 rounded-2xl bg-white dark:bg-slate-800/90 backdrop-blur-xl shadow-2xl ring-1 ring-black/5 dark:ring-white/10 overflow-hidden z-50"
                   >
                     <div className="p-2 space-y-1">
                       {Object.values(storage.tables).map(tbl => (
@@ -250,7 +163,7 @@ export default function Home() {
             </div>
             
             <div className="flex items-center gap-3 mt-4">
-               <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm text-sm text-slate-600 dark:text-slate-300 font-bold flex items-center gap-2">
+               <div className="bg-white dark:bg-slate-800/80 backdrop-blur-md px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm text-sm text-slate-600 dark:text-slate-300 font-bold flex items-center gap-2">
                  <Calendar size={16} className="text-indigo-500" /> Năm học: {currentTable.year}
                </div>
             </div>
@@ -269,24 +182,24 @@ export default function Home() {
         </div>
 
         {/* --- UI TABLE --- */}
-        <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl p-2 border border-white/50 dark:border-slate-700/50">
+        <div className="relative z-10 bg-white dark:bg-slate-900/70 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl p-2 border border-white/50 dark:border-slate-700/50">
            
            <div className="overflow-x-auto rounded-[2rem] border border-slate-100 dark:border-slate-800">
             <div className="min-w-[1000px]">
               
-              <div className="grid grid-cols-8 bg-slate-50/80 dark:bg-slate-800/80 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700 sticky top-0 z-10">
+              <div className="grid grid-cols-8 bg-slate-100 dark:bg-slate-800/80 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700 sticky top-0 z-10">
                 <div className="p-5 flex items-center justify-center font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-xs">Tiết</div>
                 {DAYS.map((day, i) => (
                   <div key={i} className="p-5 font-black text-center uppercase text-sm text-slate-600 dark:text-slate-300 tracking-wide">{day}</div>
                 ))}
               </div>
 
-              <div className="divide-y divide-slate-100 dark:divide-slate-800/50 bg-white/50 dark:bg-slate-900/20">
+              <div className="divide-y divide-slate-100 dark:divide-slate-800/50 bg-white dark:bg-slate-900/20">
                 {uiRows.map((row, index) => {
                   if (row.type === 'break') {
                     return (
                       <div key={`break-${index}`} className="grid grid-cols-1">
-                        <div className="py-3 bg-orange-50/50 dark:bg-orange-900/10 text-orange-500 dark:text-orange-400 font-bold text-center text-xs tracking-[0.2em] uppercase border-y border-orange-100 dark:border-orange-900/20 backdrop-blur-sm">
+                        <div className="py-3 bg-orange-50 dark:bg-orange-900/10 text-orange-500 dark:text-orange-400 font-bold text-center text-xs tracking-[0.2em] uppercase border-y border-orange-100 dark:border-orange-900/20 backdrop-blur-sm">
                           {row.label}
                         </div>
                       </div>
@@ -295,8 +208,8 @@ export default function Home() {
 
                   const period = row.value;
                   return (
-                    <div key={`period-${period}`} className="grid grid-cols-8 group hover:bg-indigo-50/30 dark:hover:bg-slate-800/30 transition-colors">
-                      <div className="p-4 font-bold text-slate-400 dark:text-slate-600 flex items-center justify-center border-r border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 group-hover:bg-indigo-50/50 dark:group-hover:bg-slate-800/40 transition-colors">
+                    <div key={`period-${period}`} className="grid grid-cols-8 group hover:bg-indigo-50 dark:hover:bg-slate-800/30 transition-colors">
+                      <div className="p-4 font-bold text-slate-400 dark:text-slate-600 flex items-center justify-center border-r border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/20 group-hover:bg-indigo-100/50 dark:group-hover:bg-slate-800/40 transition-colors">
                         {period}
                       </div>
 
@@ -311,8 +224,8 @@ export default function Home() {
                               relative min-h-[100px] p-3 border-l border-slate-100 dark:border-slate-800/50 cursor-pointer 
                               flex flex-col justify-center items-center text-center gap-1.5 transition-all duration-200
                               ${cellData 
-                                ? 'bg-indigo-100/40 dark:bg-indigo-500/10 hover:bg-indigo-100/60 dark:hover:bg-indigo-500/20' 
-                                : 'hover:bg-white dark:hover:bg-slate-800/60 active:scale-[0.98]'}
+                                ? 'bg-indigo-100/60 dark:bg-indigo-500/10 hover:bg-indigo-200/60 dark:hover:bg-indigo-500/20' 
+                                : 'hover:bg-slate-50 dark:hover:bg-slate-800/60 active:scale-[0.98]'}
                             `}
                           >
                             {cellData ? (
@@ -321,7 +234,7 @@ export default function Home() {
                                   {cellData.subject}
                                 </span>
                                 {cellData.location && (
-                                  <span className="inline-block mt-1 text-[11px] font-bold text-indigo-600 dark:text-indigo-300 bg-white/60 dark:bg-indigo-900/40 px-2.5 py-1 rounded-lg border border-indigo-100 dark:border-indigo-700/30 shadow-sm backdrop-blur-sm">
+                                  <span className="inline-block mt-1 text-[11px] font-bold text-indigo-600 dark:text-indigo-300 bg-white/80 dark:bg-indigo-900/40 px-2.5 py-1 rounded-lg border border-indigo-100 dark:border-indigo-700/30 shadow-sm backdrop-blur-sm">
                                     {cellData.location}
                                   </span>
                                 )}
