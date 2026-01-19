@@ -1,144 +1,132 @@
-// Lưu ý: Không import ở trên cùng (Top-level) để tránh lỗi SSR trong Next.js
-// Xóa các dòng: import jsPDF ... và import 'jspdf-autotable' ...
+// utils/pdfGenerator.js
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
-const addVietnameseFont = async (doc) => {
-  const fontUrl = 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Regular.ttf';
+const loadFont = async (doc) => {
   try {
-    const response = await fetch(fontUrl);
-    const blob = await response.blob();
-    const reader = new FileReader();
+    const response = await fetch('/font-times-new-roman.ttf');
+    if (!response.ok) throw new Error('Không thể tải file font');
     
-    return new Promise((resolve) => {
-      reader.onloadend = () => {
-        const base64 = reader.result.split(',')[1];
-        doc.addFileToVFS('Roboto-Regular.ttf', base64);
-        doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
-        doc.setFont('Roboto');
-        resolve();
-      };
-      reader.readAsDataURL(blob);
-    });
+    const fontBlob = await response.arrayBuffer();
+    const base64String = btoa(
+      new Uint8Array(fontBlob).reduce((data, byte) => data + String.fromCharCode(byte), '')
+    );
+
+    const fontName = 'TimesRes';
+    const fontFileName = 'font-times-new-roman.ttf';
+
+    doc.addFileToVFS(fontFileName, base64String);
+    
+    // Đăng ký font cho cả 2 kiểu để tránh lỗi Unicode khi gọi 'italic'
+    doc.addFont(fontFileName, fontName, 'normal');
+    doc.addFont(fontFileName, fontName, 'italic'); 
+    
+    doc.setFont(fontName, 'normal');
+    return fontName;
   } catch (e) {
-    console.error("Lỗi tải font:", e);
+    console.error("Lỗi nạp font:", e);
+    return null;
   }
 };
 
 export const generatePDF = async (tableData, config, days) => {
-  // 1. DYNAMIC IMPORT (Quan trọng: Sửa lỗi doc.autoTable is not a function)
-  const { jsPDF } = await import('jspdf');
-  const autoTable = (await import('jspdf-autotable')).default;
+  const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
 
-  // Cấu hình Theme
-  const THEME = {
-    primary: [41, 128, 185],
-    headerText: 255,
-    gridLine: [189, 195, 199],
-    textMain: [44, 62, 80],
-    breakRowFill: [253, 235, 208],
-    breakRowText: [211, 84, 0],
-  };
+  const customFont = await loadFont(doc);
+  if (!customFont) {
+    alert("Lỗi nạp font tiếng Việt.");
+    return;
+  }
 
-  // Khởi tạo PDF
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-
-  // Nạp font
-  await addVietnameseFont(doc);
-
-  // --- XỬ LÝ DỮ LIỆU ---
-  const schedule = config.data || {};
-  const breaks = config.config.breaks || [];
-  const maxPeriods = config.config.maxPeriods || 10;
-
+  // --- 1. CHUẨN BỊ DỮ LIỆU ---
   const tableHead = [['TIẾT', ...days.map(d => d.toUpperCase())]];
   const tableBody = [];
-  
-  for (let period = 1; period <= maxPeriods; period++) {
-    const row = [];
-    // Cột Tiết
-    row.push({ content: period.toString(), styles: { fontStyle: 'bold', halign: 'center' } });
+  const schedule = config.data || {};
+  const breaks = config.config.breaks || [];
 
-    // Các cột ngày
-    days.forEach((_, index) => {
-      const key = `${index}-${period}`;
+  for (let p = 1; p <= config.config.maxPeriods; p++) {
+    const row = [{ 
+      content: p.toString(), 
+      styles: { fontStyle: 'normal' } 
+    }];
+    
+    days.forEach((_, dIdx) => {
+      const key = `${dIdx}-${p}`;
       const cell = schedule[key];
-      if (cell) {
-        let content = cell.subject;
-        if (cell.location) content += `\n(${cell.location})`;
-        row.push(content);
-      } else {
-        row.push('');
-      }
+      row.push(cell ? `${cell.subject}${cell.location ? `\n(${cell.location})` : ''}` : '');
     });
     tableBody.push(row);
 
-    // Dòng nghỉ
-    const breakInfo = breaks.find(b => b.after === period);
-    if (breakInfo) {
+    const brk = breaks.find(b => b.after === p);
+    if (brk) {
       tableBody.push([{
-        content: breakInfo.label || 'NGHỈ GIẢI LAO',
+        content: brk.label.toUpperCase(),
         colSpan: days.length + 1,
         styles: { 
-          fillColor: THEME.breakRowFill, 
-          textColor: THEME.breakRowText, 
-          fontStyle: 'bold', 
+          fillColor: [255, 235, 215],
+          textColor: [150, 70, 0],
+          fontSize: 12,
+          fontStyle: 'normal',
           halign: 'center',
-          cellPadding: 2 
+          valign: 'middle'
         }
       }]);
     }
   }
 
-  // --- VẼ HEADER ---
-  doc.setFontSize(22);
-  doc.setTextColor(...THEME.primary);
-  doc.text((tableData.name || 'THỜI KHÓA BIỂU').toUpperCase(), 148.5, 20, { align: 'center' });
-  
-  doc.setFontSize(12);
-  doc.setTextColor(100);
-  doc.text(`Năm học: ${tableData.year || '2024 - 2025'}`, 148.5, 28, { align: 'center' });
+  const pageWidth = doc.internal.pageSize.getWidth();
 
-  // --- VẼ BẢNG (SỬA LỖI Ở ĐÂY) ---
-  // Thay vì gọi doc.autoTable({...}), ta gọi hàm autoTable(doc, {...})
+  // --- 2. VẼ TIÊU ĐỀ ---
+  // Tiêu đề chính: CHỮ THẲNG
+  doc.setFont(customFont, 'normal');
+  doc.setFontSize(22);
+  doc.setTextColor(40, 60, 80);
+  doc.text(tableData.name.toUpperCase(), pageWidth / 2, 18, { align: 'center' });
+  
+  // Dòng năm học: CHỮ NGHIÊNG (Đã fix lỗi Unicode bằng cách đăng ký font italic ở trên)
+  doc.setFontSize(12);
+  doc.setTextColor(100, 100, 100);
+  doc.setFont(customFont, 'italic'); 
+  doc.text(`Năm học: ${tableData.year}`, pageWidth / 2, 26, { align: 'center' });
+
+  // --- 3. VẼ BẢNG ---
   autoTable(doc, {
     head: tableHead,
     body: tableBody,
-    startY: 35,
+    startY: 32,
     theme: 'grid',
-    
     styles: {
-      font: 'Roboto',
+      font: customFont,
+      fontStyle: 'normal', // Ép toàn bảng là chữ thẳng
       fontSize: 11,
-      textColor: THEME.textMain,
-      lineColor: THEME.gridLine,
-      lineWidth: 0.1,
-      valign: 'middle',
-      cellPadding: 3,
-    },
-
-    headStyles: {
-      fillColor: THEME.primary,
-      textColor: THEME.headerText,
-      fontStyle: 'bold',
       halign: 'center',
       valign: 'middle',
-      minCellHeight: 12
+      cellPadding: 3,
+      lineColor: [180, 180, 180],
+      lineWidth: 0.1,
+      textColor: [0, 0, 0],
     },
-
+    headStyles: {
+      fillColor: [240, 242, 245],
+      fontStyle: 'normal', // Header chữ thẳng
+      lineWidth: 0.2,
+    },
     columnStyles: {
-      0: { 
-        cellWidth: 15,
-        halign: 'center',
-        fillColor: [245, 245, 245]
-      }
+      // Tăng lên 25mm để chữ "TIẾT" nằm gọn trên 1 dòng
+      0: { cellWidth: 25, fillColor: [250, 250, 250] }
     },
+    didParseCell: (data) => {
+      data.cell.styles.font = customFont;
+      data.cell.styles.fontStyle = 'normal'; // Đảm bảo không ô nào bị lỗi render nghiêng
+    }
   });
 
   // Footer
-  const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  doc.setFont(customFont, 'normal');
   doc.setFontSize(9);
   doc.setTextColor(150);
-  doc.text(`Được xuất vào lúc: ${new Date().toLocaleString('vi-VN')}`, 280, pageHeight - 10, { align: 'right' });
+  doc.text(`Được xuất lúc: ${new Date().toLocaleString('vi-VN')}`, pageWidth - 10, pageHeight - 10, { align: 'right' });
 
-  // Lưu file
-  doc.save(`TKB-${tableData.name || 'export'}.pdf`);
+  doc.save(`TKB-${tableData.name.replace(/\s+/g, '_')}.pdf`);
 };

@@ -59,7 +59,7 @@ Dự án được xây dựng trên nền tảng các công nghệ web tiên ti�
 
 1.  **Clone dự án:**
     ```bash
-    git clone https://github.com/your-username/thoi-khoa-bieu.git
+    git clone https://github.com/KienPC1234/thoi-khoa-bieu.git
     cd thoi-khoa-bieu
     ```
 
